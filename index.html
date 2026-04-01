@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F-Score Prospect Engine</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08080d; color: #fff; font-family: 'DM Sans', sans-serif; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes spin { to { transform: rotate(360deg) } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useCallback } = React;
+
+    const API = "http://localhost:8000/api";
+
+    // ─── Components ───
+
+    const Pill = ({ children, active, onClick }) => (
+      <button onClick={onClick} style={{
+        padding: "6px 13px", borderRadius: 100, border: "1px solid",
+        borderColor: active ? "#6366f1" : "rgba(255,255,255,0.07)",
+        background: active ? "rgba(99,102,241,0.14)" : "rgba(255,255,255,0.02)",
+        color: active ? "#a5b4fc" : "rgba(255,255,255,0.4)",
+        fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+        transition: "all 0.15s", fontWeight: active ? 600 : 400,
+      }}>{children}</button>
+    );
+
+    const FeatureBar = ({ label, value, color }) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", minWidth: 95, fontFamily: "'DM Sans'" }}>{label}</span>
+        <div style={{ flex: 1, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+          <div style={{ width: `${value * 100}%`, height: "100%", borderRadius: 3, background: color, transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)" }} />
+        </div>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono'", minWidth: 28, textAlign: "right" }}>{(value * 100).toFixed(0)}%</span>
+      </div>
+    );
+
+    const Spinner = () => (
+      <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+        <div style={{ width: 24, height: 24, border: "2px solid rgba(99,102,241,0.2)", borderTopColor: "#6366f1", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      </div>
+    );
+
+    // ─── Config ───
+    const SECTORS = ["Tech", "Medical", "Legal", "Finance", "Real Estate", "Business", "Corporate", "Retired", "Consulting", "Sports", "Academic"];
+    const EVENT_CATS = [
+      { id: "liquidity", label: "Liquidity Events" },
+      { id: "inheritance", label: "Inheritance" },
+      { id: "retirement", label: "Retirement" },
+      { id: "divorce", label: "Divorce" },
+      { id: "real_estate", label: "Real Estate" },
+      { id: "career", label: "Career Change" },
+      { id: "family", label: "Family" },
+    ];
+    const STATES = ["NY","CA","IL","TX","AZ","WA","CO","MA","FL","GA","NC","TN","OR","MN","CT","MD","PA","UT","NJ"];
+    const ASSET_OPTIONS = [
+      { value: 100000, label: "$100K" }, { value: 250000, label: "$250K" },
+      { value: 500000, label: "$500K" }, { value: 1000000, label: "$1M" },
+      { value: 2000000, label: "$2M" }, { value: 5000000, label: "$5M" },
+    ];
+    const MAX_ASSET_OPTIONS = [
+      { value: 1000000, label: "$1M" }, { value: 2000000, label: "$2M" },
+      { value: 5000000, label: "$5M" }, { value: 10000000, label: "$10M" },
+      { value: 25000000, label: "$25M" }, { value: 50000000, label: "$50M" },
+    ];
+
+    const colorOf = (s) => s >= 80 ? "#22c55e" : s >= 60 ? "#eab308" : s >= 40 ? "#f97316" : "#64748b";
+    const fmt = (n) => n >= 1e6 ? `$${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `$${(n/1e3).toFixed(0)}K` : `$${n}`;
+
+    // ─── Main App ───
+
+    function App() {
+      const [sectors, setSectors] = useState(["Tech", "Finance"]);
+      const [eventCats, setEventCats] = useState(["liquidity"]);
+      const [states, setStates] = useState([]);
+      const [minAssets, setMinAssets] = useState(500000);
+      const [maxAssets, setMaxAssets] = useState(5000000);
+
+      const [results, setResults] = useState(null);
+      const [stats, setStats] = useState(null);
+      const [methodology, setMethodology] = useState(null);
+      const [explanation, setExplanation] = useState(null);
+
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+      const [expandedId, setExpandedId] = useState(null);
+      const [showML, setShowML] = useState(false);
+      const [showPipeline, setShowPipeline] = useState(false);
+      const [showStats, setShowStats] = useState(false);
+      const [limit, setLimit] = useState(30);
+      const [health, setHealth] = useState(null);
+
+      const toggle = (arr, setArr, val) => setArr(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
+
+      const profile = { sectors, event_categories: eventCats, states, min_assets: minAssets, max_assets: maxAssets };
+
+      // Health check on mount
+      useEffect(() => {
+        fetch(`${API}/health`).then(r => r.json()).then(setHealth).catch(() => setError("Cannot reach backend. Is it running on localhost:8000?"));
+      }, []);
+
+      const runScore = async () => {
+        setLoading(true); setError(null); setResults(null); setStats(null); setExplanation(null);
+        try {
+          const [scoreRes, statsRes] = await Promise.all([
+            fetch(`${API}/score?limit=200`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
+            fetch(`${API}/stats`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
+          ]);
+          if (!scoreRes.ok) throw new Error(`Score API: ${scoreRes.status}`);
+          if (!statsRes.ok) throw new Error(`Stats API: ${statsRes.status}`);
+          setResults(await scoreRes.json());
+          setStats(await statsRes.json());
+          setLimit(30);
+        } catch (e) { setError(e.message); }
+        setLoading(false);
+      };
+
+      const loadExplanation = async (prospectId) => {
+        try {
+          const res = await fetch(`${API}/explain/${prospectId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) });
+          if (!res.ok) throw new Error(`Explain API: ${res.status}`);
+          setExplanation(await res.json());
+        } catch (e) { console.error(e); }
+      };
+
+      const loadMethodology = async () => {
+        if (methodology) { setShowML(!showML); return; }
+        try {
+          const res = await fetch(`${API}/methodology`);
+          setMethodology(await res.json());
+          setShowML(true);
+        } catch (e) { console.error(e); }
+      };
+
+      const handleExpand = (id) => {
+        if (expandedId === id) { setExpandedId(null); setExplanation(null); return; }
+        setExpandedId(id);
+        setExplanation(null);
+        loadExplanation(id);
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", backgroundImage: "radial-gradient(ellipse at 10% 0%, rgba(99,102,241,0.05) 0%, transparent 50%)", padding: "28px 16px" }}>
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+
+            {/* Header */}
+            <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 280 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800 }}>F</div>
+                  <h1 style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Playfair Display',serif" }}>F-Score Prospect Engine</h1>
+                </div>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
+                  Full-stack ML scoring pipeline. Backend: FastAPI · Frontend: React · {health ? `${health.prospects_loaded} prospects loaded` : "Connecting..."}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setShowPipeline(!showPipeline); setShowML(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showPipeline ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Pipeline</button>
+                <button onClick={() => { loadMethodology(); setShowPipeline(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showML ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>ML Deep Dive</button>
+                {stats && <button onClick={() => { setShowStats(!showStats); setShowPipeline(false); setShowML(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showStats ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Stats</button>}
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: 14, marginBottom: 16, fontSize: 12, color: "#f87171" }}>
+                {error}
+              </div>
+            )}
+
+            {/* Pipeline */}
+            {showPipeline && (
+              <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginBottom: 14 }}>Scoring Pipeline — Client → API → ML → Response</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", paddingBottom: 8 }}>
+                  {[
+                    { s: "POST /api/score", d: "Client sends AdvisorProfile JSON", i: "📤" },
+                    { s: "Data Layer", d: "200 synthetic prospects loaded in memory", i: "📊" },
+                    { s: "Feature Extraction", d: "6 features per prospect-advisor pair", i: "⚙️" },
+                    { s: "Scoring + Calibration", d: "Weighted ensemble → sigmoid → F-Score 0-100", i: "🧠" },
+                    { s: "Ranked Response", d: "JSON array sorted by F-Score desc", i: "🎯" },
+                  ].map((s, i) => (
+                    <React.Fragment key={i}>
+                      <div style={{ minWidth: 115, padding: "10px 10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, textAlign: "center" }}>
+                        <div style={{ fontSize: 16, marginBottom: 3 }}>{s.i}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 2 }}>{s.s}</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", lineHeight: 1.4 }}>{s.d}</div>
+                      </div>
+                      {i < 4 && <div style={{ width: 16, height: 1, background: "rgba(99,102,241,0.3)", flexShrink: 0 }} />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ML Deep Dive */}
+            {showML && methodology && (
+              <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>ML Methodology (from /api/methodology)</h3>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
+                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Scoring Function</strong><br/>
+                  <code style={{ fontSize: 11, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{methodology.scoring_function}</code>
+                  <br/><br/>
+                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Features ({methodology.feature_descriptions.length})</strong>
+                  {methodology.feature_descriptions.map((f, i) => (
+                    <div key={i} style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(99,102,241,0.2)" }}>
+                      <div style={{ color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>{f.name} <span style={{ color: "rgba(99,102,241,0.6)" }}>(w={f.weight})</span></div>
+                      <div style={{ fontSize: 10, marginTop: 2 }}>{f.detail}</div>
+                    </div>
+                  ))}
+                  <br/>
+                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Production Architecture</strong>
+                  {Object.entries(methodology.production_architecture).map(([key, val]) => (
+                    <div key={key} style={{ marginTop: 8, paddingLeft: 12, borderLeft: "2px solid rgba(99,102,241,0.15)" }}>
+                      <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{val.method || key}</div>
+                      <div style={{ fontSize: 10, marginTop: 2 }}>{val.description || JSON.stringify(val)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stats */}
+            {showStats && stats && (
+              <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>Scoring Statistics (from /api/stats)</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{stats.avg_f_score}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Avg F-Score</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{stats.median_f_score}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Median</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{stats.total_prospects}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Total</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, fontWeight: 600 }}>Score Distribution</div>
+                {Object.entries(stats.score_distribution).map(([bucket, count]) => (
+                  <div key={bucket} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", minWidth: 40, fontFamily: "'DM Mono'" }}>{bucket}</span>
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                      <div style={{ width: `${(count / stats.total_prospects) * 100}%`, height: "100%", borderRadius: 3, background: "#6366f1", transition: "width 0.5s" }} />
+                    </div>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono'", minWidth: 20, textAlign: "right" }}>{count}</span>
+                  </div>
+                ))}
+                {stats.top_sectors.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6, fontWeight: 600 }}>Top Sectors (among 60+ scorers)</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {stats.top_sectors.map(s => (
+                        <span key={s.sector} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 100, background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>{s.sector} ({s.count})</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Advisor Profile */}
+            <div style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: 14, textTransform: "uppercase", letterSpacing: 1.2 }}>Define Your Ideal Client Profile</h3>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Target Sectors</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {SECTORS.map(s => <Pill key={s} active={sectors.includes(s)} onClick={() => toggle(sectors, setSectors, s)}>{s}</Pill>)}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Life Event Triggers</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {EVENT_CATS.map(e => <Pill key={e.id} active={eventCats.includes(e.id)} onClick={() => toggle(eventCats, setEventCats, e.id)}>{e.label}</Pill>)}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Target States (empty = nationwide)</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {STATES.map(s => <Pill key={s} active={states.includes(s)} onClick={() => toggle(states, setStates, s)}>{s}</Pill>)}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 130 }}>
+                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 1 }}>Min Assets</label>
+                  <select value={minAssets} onChange={e => setMinAssets(Number(e.target.value))} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12 }}>
+                    {ASSET_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: "#1a1a2e" }}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 130 }}>
+                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 1 }}>Max Assets</label>
+                  <select value={maxAssets} onChange={e => setMaxAssets(Number(e.target.value))} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12 }}>
+                    {MAX_ASSET_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: "#1a1a2e" }}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button onClick={runScore} disabled={loading || !health} style={{
+                width: "100%", padding: "11px", borderRadius: 8, border: "none",
+                background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                color: "#fff", fontSize: 13, fontWeight: 700, cursor: loading ? "wait" : "pointer",
+                letterSpacing: 0.3, opacity: health ? 1 : 0.4,
+              }}>
+                {loading ? "Scoring..." : results ? "Re-Score All Prospects" : "Run F-Score Pipeline →"}
+              </button>
+            </div>
+
+            {/* Loading */}
+            {loading && <Spinner />}
+
+            {/* Results */}
+            {results && !loading && (
+              <div style={{ animation: "fadeIn 0.3s" }}>
+                {/* Summary */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  {[
+                    { label: "High Intent (80+)", count: results.high_intent_count, color: "#22c55e", bg: "rgba(34,197,94,0.06)", bd: "rgba(34,197,94,0.12)" },
+                    { label: "Warm (60-79)", count: results.warm_count, color: "#eab308", bg: "rgba(234,179,8,0.06)", bd: "rgba(234,179,8,0.1)" },
+                    { label: "Total Scored", count: results.total_prospects, color: "rgba(255,255,255,0.5)", bg: "rgba(255,255,255,0.02)", bd: "rgba(255,255,255,0.06)" },
+                  ].map((m, i) => (
+                    <div key={i} style={{ flex: 1, background: m.bg, border: `1px solid ${m.bd}`, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: m.color, fontFamily: "'DM Mono'" }}>{m.count}</div>
+                      <div style={{ fontSize: 9, color: m.color, opacity: 0.6, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 600 }}>{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Prospect Cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {results.results.slice(0, limit).map((r) => {
+                    const p = r.prospect;
+                    const sc = colorOf(r.f_score);
+                    const expanded = expandedId === p.id;
+                    return (
+                      <div key={p.id} onClick={() => handleExpand(p.id)} style={{
+                        background: expanded ? "rgba(99,102,241,0.05)" : "rgba(255,255,255,0.012)",
+                        border: `1px solid ${r.f_score >= 80 ? "rgba(34,197,94,0.1)" : r.f_score >= 60 ? "rgba(234,179,8,0.07)" : "rgba(255,255,255,0.04)"}`,
+                        borderRadius: 8, padding: "10px 14px", cursor: "pointer", transition: "all 0.15s",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono'", minWidth: 22 }}>#{r.rank}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 1 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</span>
+                              <span style={{ fontSize: 9, fontWeight: 600, padding: "2px 6px", borderRadius: 100, background: `${sc}18`, color: sc }}>{r.status}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+                              {p.occupation} · {p.city}, {p.state} · {fmt(p.assets)}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 80 }}>
+                            <div style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                              <div style={{ width: `${r.f_score}%`, height: "100%", borderRadius: 2, background: sc, transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)" }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: sc, fontFamily: "'DM Mono'", minWidth: 24 }}>{r.f_score}</span>
+                          </div>
+                        </div>
+
+                        {/* Expanded Detail */}
+                        {expanded && (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                              {[["Age", p.age], ["Income", `${fmt(p.income * 1000)}/yr`], ["Has Advisor", p.has_advisor ? "Yes" : "No"], ["Searching", p.searching_online ? "Yes" : "No"]].map(([l, v]) => (
+                                <div key={l}>
+                                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: 0.8 }}>{l}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.6)", fontFamily: "'DM Mono'" }}>{v}</div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {p.events.length > 0 && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Life Events</div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                  {p.events.map((ev, j) => (
+                                    <span key={j} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 100, background: "rgba(139,92,246,0.1)", color: "#c4b5fd" }}>
+                                      {ev.event} <span style={{ opacity: 0.5 }}>({ev.days_ago}d ago)</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 5, fontWeight: 600 }}>Feature Decomposition (from /api/explain/{p.id})</div>
+                            {explanation && explanation.prospect.id === p.id ? (
+                              <>
+                                <FeatureBar label="Niche Align" value={explanation.features.niche_alignment} color="#6366f1" />
+                                <FeatureBar label="Asset Fit" value={explanation.features.asset_fit} color="#8b5cf6" />
+                                <FeatureBar label="Life Events" value={explanation.features.life_event_signal} color="#a78bfa" />
+                                <FeatureBar label="Geography" value={explanation.features.geo_proximity} color="#818cf8" />
+                                <FeatureBar label="Conversion" value={explanation.features.conversion_likelihood} color="#22c55e" />
+                                <FeatureBar label="Wealth Coher." value={explanation.features.wealth_coherence} color="#eab308" />
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.03)" }}>
+                                  {explanation.explanation.map((line, k) => (
+                                    <div key={k} style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 3, paddingLeft: 10, borderLeft: "2px solid rgba(99,102,241,0.2)" }}>
+                                      {line}
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", fontStyle: "italic" }}>Loading explanation...</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {limit < results.results.length && (
+                  <button onClick={() => setLimit(l => l + 30)} style={{
+                    width: "100%", marginTop: 10, padding: "10px", borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.06)", background: "transparent",
+                    color: "rgba(255,255,255,0.3)", fontSize: 12, cursor: "pointer",
+                  }}>
+                    Show more ({results.results.length - limit} remaining)
+                  </button>
+                )}
+
+                <div style={{ marginTop: 20, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.1)", borderRadius: 8, padding: 14, textAlign: "center" }}>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 2 }}>Full-stack ML prospect matching prototype</p>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)" }}>Built by Anastasis Moraitis · Georgia Tech '27 · FastAPI + React</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
