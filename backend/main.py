@@ -20,15 +20,26 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from statistics import median
 
-from models import (
-    AdvisorProfile, ScoreResponse, StatsResponse,
-    ExplainResponse, MethodologyResponse, Prospect,
-)
-from data import generate_prospects
-from scoring import (
-    score_all_prospects, explain_score, compute_f_score,
-    extract_features, get_status, MODEL_WEIGHTS, METHODOLOGY,
-)
+try:
+    from backend.models import (
+        AdvisorProfile, ScoreResponse, StatsResponse,
+        ExplainResponse, MethodologyResponse, Prospect,
+    )
+    from backend.data import generate_prospects
+    from backend.scoring import (
+        score_all_prospects, explain_score, compute_f_score,
+        extract_features, get_status, MODEL_WEIGHTS, METHODOLOGY,
+    )
+except ImportError:
+    from models import (
+        AdvisorProfile, ScoreResponse, StatsResponse,
+        ExplainResponse, MethodologyResponse, Prospect,
+    )
+    from data import generate_prospects
+    from scoring import (
+        score_all_prospects, explain_score, compute_f_score,
+        extract_features, get_status, MODEL_WEIGHTS, METHODOLOGY,
+    )
 
 
 # ─── App Setup ───

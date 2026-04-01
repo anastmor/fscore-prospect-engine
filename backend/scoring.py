@@ -15,10 +15,16 @@ In production, this would be replaced by:
 """
 
 import math
-from models import (
-    Prospect, AdvisorProfile, FeatureVector, ScoredProspect,
-    ProspectStatus, ExplainResponse, Sector, EventCategory,
-)
+try:
+    from backend.models import (
+        Prospect, AdvisorProfile, FeatureVector, ScoredProspect,
+        ProspectStatus, ExplainResponse, Sector, EventCategory,
+    )
+except ImportError:
+    from models import (
+        Prospect, AdvisorProfile, FeatureVector, ScoredProspect,
+        ProspectStatus, ExplainResponse, Sector, EventCategory,
+    )
 
 
 # ─── Model Configuration ───

@@ -23,7 +23,9 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect, useCallback } = React;
 
-    const API = "http://localhost:8000/api";
+    const API = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:8000/api"
+      : "https://fscore-prospect-engine.onrender.com/api";
 
     // ─── Components ───
 

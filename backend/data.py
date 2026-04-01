@@ -12,7 +12,10 @@ In production, this module would be replaced by:
 """
 
 import math
-from models import Prospect, LifeEvent, EventCategory, Sector
+try:
+    from backend.models import Prospect, LifeEvent, EventCategory, Sector
+except ImportError:
+    from models import Prospect, LifeEvent, EventCategory, Sector
 
 
 # ─── Reference Data ───

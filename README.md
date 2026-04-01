@@ -8,6 +8,27 @@ Built by **Anastasis Moraitis** · Georgia Tech '27 · Computer Engineering
 
 ---
 
+## Why FINNY
+
+FINNY is building the **growth OS for independent financial advisors** — the infrastructure layer that handles everything from prospect discovery to client onboarding.
+
+The numbers reveal the problem: advisors spend an average of **~58 hours per new client converted**, with conversion rates below **1%** on cold outreach. The matching problem is hard: 270M+ U.S. adults, sparse behavioral signals, and the window to reach a prospect is narrow — most advisor-seeking behavior clusters around a handful of life events that decay within 90 days.
+
+This prototype explores the ML architecture behind that matching problem:
+
+- **F-Score concept** — a calibrated 0–100 compatibility score per advisor-prospect pair, built on a 6-feature weighted ensemble with sigmoid calibration
+- **Life event timing with exponential decay** — a liquidity event 7 days ago is ~15× more signal-rich than the same event 6 months ago (λ = 90-day decay constant)
+- **Advisor-specific pairwise matching** — features are computed per advisor–prospect pair, not globally, so the same prospect can score differently for different advisors
+- **Candidate retrieval at scale with ANN** — in production, FAISS/ScaNN narrows 270M profiles to ~10K candidates before the ranking model runs
+
+---
+
+## Live Demo
+
+**[https://fscore-prospect-engine.onrender.com](https://fscore-prospect-engine.onrender.com)**
+
+---
+
 ## Demo
 
 ![F-Score Engine Screenshot](https://img.shields.io/badge/status-working-brightgreen)
@@ -119,7 +140,9 @@ Interactive API docs: `http://localhost:8000/docs`
 ```
 fscore-engine/
 ├── README.md
+├── render.yaml              # Render deploy config
 ├── backend/
+│   ├── __init__.py
 │   ├── main.py              # FastAPI app, routes, CORS
 │   ├── models.py            # Pydantic schemas
 │   ├── data.py              # Synthetic prospect generator
