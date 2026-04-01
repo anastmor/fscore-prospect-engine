@@ -52,11 +52,6 @@ app = FastAPI(
         "using a 6-feature weighted ensemble with sigmoid calibration."
     ),
     version="1.0.0",
-    contact={
-        "name": "Anastasis Moraitis",
-        "url": "https://github.com/amoraitis",
-        "email": "amoraitis3@gatech.edu",
-    },
 )
 
 # CORS — allow frontend dev server

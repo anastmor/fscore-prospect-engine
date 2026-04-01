@@ -4,7 +4,7 @@
 
 A full-stack prototype demonstrating how machine learning can match financial advisors with high-conversion individual prospects — inspired by the advisor-prospect matching problem in wealthtech.
 
-Built by **Anastasis Moraitis** · Georgia Tech '27 · Computer Engineering
+Built by **Anastasis Moraitis** · Georgia Tech '27 · Computer Engineering · [Live Demo →](https://anastmor.github.io/fscore-prospect-engine/frontend/index.html)
 
 ---
 
@@ -25,7 +25,8 @@ This prototype explores the ML architecture behind that matching problem:
 
 ## Live Demo
 
-**[https://fscore-prospect-engine.onrender.com](https://fscore-prospect-engine.onrender.com)**
+- **Frontend:** [https://anastmor.github.io/fscore-prospect-engine/frontend/index.html](https://anastmor.github.io/fscore-prospect-engine/frontend/index.html)
+- **API Docs:** [https://fscore-prospect-engine.onrender.com/docs](https://fscore-prospect-engine.onrender.com/docs)
 
 ---
 
