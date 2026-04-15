@@ -30,6 +30,7 @@ try:
         score_all_prospects, explain_score, compute_f_score,
         extract_features, get_status, MODEL_WEIGHTS, METHODOLOGY,
     )
+    from backend import hunter as hunter_module
 except ImportError:
     from models import (
         AdvisorProfile, ScoreResponse, StatsResponse,
@@ -40,6 +41,7 @@ except ImportError:
         score_all_prospects, explain_score, compute_f_score,
         extract_features, get_status, MODEL_WEIGHTS, METHODOLOGY,
     )
+    import hunter as hunter_module
 
 
 # ─── App Setup ───
@@ -53,6 +55,8 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+app.include_router(hunter_module.router)
 
 # CORS — allow frontend dev server
 app.add_middleware(
@@ -239,5 +243,7 @@ def get_methodology():
 
 @app.on_event("startup")
 def startup():
+    hunter_module.init_prospects(PROSPECTS)
     print(f"F-Score Engine loaded with {len(PROSPECTS)} prospects")
     print(f"Model weights: {MODEL_WEIGHTS}")
+    print("Hunter AI agent initialized")

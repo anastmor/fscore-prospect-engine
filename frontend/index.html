@@ -82,6 +82,68 @@
     const colorOf = (s) => s >= 80 ? "#22c55e" : s >= 60 ? "#eab308" : s >= 40 ? "#f97316" : "#64748b";
     const fmt = (n) => n >= 1e6 ? `$${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `$${(n/1e3).toFixed(0)}K` : `$${n}`;
 
+    // ─── Hunter Result Renderer ───
+
+    const HunterResult = ({ result }) => {
+      const { action, data } = result;
+      const sec = { marginBottom: 12 };
+      const lbl = { fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 };
+      const txt = { fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.7, whiteSpace: "pre-wrap" };
+      const pill = { fontSize: 10, padding: "3px 9px", borderRadius: 100, background: "rgba(99,102,241,0.1)", color: "#a5b4fc", display: "inline-block", margin: "2px 3px 2px 0" };
+      const card = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 };
+
+      if (action === "strategy") return (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>Growth Strategy</div>
+          <div style={sec}><div style={lbl}>Campaign Types</div><div>{data.campaign_types.map((t,i) => <span key={i} style={pill}>{t}</span>)}</div></div>
+          <div style={sec}><div style={lbl}>Target Segments</div>{data.target_segments.map((s,i) => <div key={i} style={{ ...txt, paddingLeft: 10, borderLeft: "2px solid rgba(99,102,241,0.2)", marginBottom: 4 }}>{s}</div>)}</div>
+          <div style={sec}><div style={lbl}>Content Themes</div><div>{data.content_themes.map((t,i) => <span key={i} style={pill}>{t}</span>)}</div></div>
+          <div style={sec}><div style={lbl}>Channel Mix</div>{Object.entries(data.channel_mix).map(([ch,note]) => <div key={ch} style={{ marginBottom: 4, fontSize: 12, color: "rgba(255,255,255,0.5)" }}><strong style={{ color: "rgba(255,255,255,0.6)" }}>{ch}:</strong> {note}</div>)}</div>
+          <div style={sec}><div style={lbl}>Full Strategy</div><div style={txt}>{data.full_strategy}</div></div>
+        </div>
+      );
+
+      if (action === "campaign") return (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>Campaign Plan: {data.campaign_type}</div>
+          <div style={sec}><div style={lbl}>4-Week Plan</div><div style={txt}>{data.four_week_plan}</div></div>
+          <div style={sec}>
+            <div style={lbl}>Sample Content</div>
+            {data.sample_content.map((c,i) => <div key={i} style={card}><div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", marginBottom: 4 }}>Piece {i+1}</div><div style={txt}>{c}</div></div>)}
+          </div>
+          <div style={sec}><div style={lbl}>Targeting Criteria</div><div style={txt}>{data.targeting_criteria}</div></div>
+          <div style={sec}>
+            <div style={lbl}>KPI Targets</div>
+            {Object.entries(data.kpi_targets).map(([k,v]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.03)", fontSize: 12 }}><span style={{ color: "rgba(255,255,255,0.5)" }}>{k}</span><span style={{ fontWeight: 700, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{v}</span></div>)}
+          </div>
+        </div>
+      );
+
+      if (action === "outreach") return (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>Outreach for {data.prospect_name} · F-Score {data.f_score}</div>
+          {[["Email", data.email_variant], ["LinkedIn Message", data.linkedin_variant], ["Voicemail Script", data.voicemail_script]].map(([label, content]) => (
+            <div key={label} style={{ ...sec, ...card }}>
+              <div style={{ ...lbl, marginBottom: 6 }}>{label}</div>
+              <div style={txt}>{content}</div>
+            </div>
+          ))}
+        </div>
+      );
+
+      if (action === "analyze") return (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>Weekly Intelligence Briefing</div>
+          <div style={sec}><div style={lbl}>Top Opportunities</div><div style={txt}>{data.top_opportunities}</div></div>
+          <div style={sec}><div style={lbl}>Pattern Analysis</div><div style={txt}>{data.reasoning}</div></div>
+          <div style={sec}><div style={lbl}>This Week's Actions</div><div style={txt}>{data.recommendations}</div></div>
+          <div style={sec}><div style={lbl}>Full Briefing</div><div style={{ ...txt, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.1)", borderRadius: 8, padding: 14 }}>{data.full_briefing}</div></div>
+        </div>
+      );
+
+      return null;
+    };
+
     // ─── Main App ───
 
     function App() {
@@ -104,6 +166,12 @@
       const [showStats, setShowStats] = useState(false);
       const [limit, setLimit] = useState(30);
       const [health, setHealth] = useState(null);
+      const [showHunter, setShowHunter] = useState(false);
+      const [hunterDesc, setHunterDesc] = useState("I'm a fee-only advisor specializing in tech executives and startup founders navigating liquidity events.");
+      const [hunterCampaignType, setHunterCampaignType] = useState("LinkedIn thought leadership");
+      const [hunterResult, setHunterResult] = useState(null);
+      const [hunterLoading, setHunterLoading] = useState(false);
+      const [hunterMsg, setHunterMsg] = useState("");
 
       const toggle = (arr, setArr, val) => setArr(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
 
@@ -154,6 +222,47 @@
         loadExplanation(id);
       };
 
+      const callHunter = async (action) => {
+        setHunterLoading(true); setHunterResult(null);
+        const msgs = {
+          strategy: "Crafting your growth strategy...",
+          campaign: "Building your campaign plan...",
+          outreach: "Drafting personalized outreach...",
+          analyze: "Hunter is analyzing your practice...",
+        };
+        setHunterMsg(msgs[action] || "Hunter is thinking...");
+        try {
+          let url, body;
+          if (action === "strategy") {
+            url = `${API}/hunter/strategy`;
+            body = { profile, advisor_description: hunterDesc };
+          } else if (action === "campaign") {
+            url = `${API}/hunter/campaign`;
+            body = { profile, campaign_type: hunterCampaignType };
+          } else if (action === "outreach") {
+            if (!results) { setHunterMsg("Run the F-Score pipeline first to get top prospects."); setHunterLoading(false); return; }
+            const topId = results.results[0]?.prospect?.id;
+            if (!topId) { setHunterMsg("No prospects to draft outreach for."); setHunterLoading(false); return; }
+            url = `${API}/hunter/outreach/${topId}`;
+            body = profile;
+          } else if (action === "analyze") {
+            url = `${API}/hunter/analyze`;
+            body = profile;
+          }
+          const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          setHunterResult({ action, data });
+          setHunterMsg("");
+        } catch (e) {
+          setHunterMsg(`Error: ${e.message}`);
+        }
+        setHunterLoading(false);
+      };
+
       return (
         <div style={{ minHeight: "100vh", backgroundImage: "radial-gradient(ellipse at 10% 0%, rgba(99,102,241,0.05) 0%, transparent 50%)", padding: "28px 16px" }}>
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
@@ -169,10 +278,11 @@
                   Full-stack ML scoring pipeline. Backend: FastAPI · Frontend: React · {health ? `${health.prospects_loaded} prospects loaded` : "Connecting..."}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => { setShowPipeline(!showPipeline); setShowML(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showPipeline ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Pipeline</button>
-                <button onClick={() => { loadMethodology(); setShowPipeline(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showML ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>ML Deep Dive</button>
-                {stats && <button onClick={() => { setShowStats(!showStats); setShowPipeline(false); setShowML(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showStats ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Stats</button>}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button onClick={() => { setShowPipeline(!showPipeline); setShowML(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showPipeline ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Pipeline</button>
+                <button onClick={() => { loadMethodology(); setShowPipeline(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showML ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>ML Deep Dive</button>
+                {stats && <button onClick={() => { setShowStats(!showStats); setShowPipeline(false); setShowML(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showStats ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Stats</button>}
+                <button onClick={() => { setShowHunter(!showHunter); setShowPipeline(false); setShowML(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${showHunter ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.08)"}`, background: showHunter ? "rgba(139,92,246,0.15)" : "transparent", color: showHunter ? "#c4b5fd" : "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 700 }}>Hunter AI ✦</button>
               </div>
             </div>
 
@@ -271,6 +381,76 @@
                         <span key={s.sector} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 100, background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>{s.sector} ({s.count})</span>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hunter AI */}
+            {showHunter && (
+              <div style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg,#8b5cf6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>H</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#c4b5fd" }}>Hunter — AI Growth Agent</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Powered by Claude · Strategy, campaigns & personalized outreach</div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14, marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Describe your practice</label>
+                  <textarea
+                    value={hunterDesc}
+                    onChange={e => setHunterDesc(e.target.value)}
+                    rows={2}
+                    style={{ width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12, fontFamily: "'DM Sans',sans-serif", resize: "vertical", lineHeight: 1.5 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Campaign type</label>
+                  <input
+                    value={hunterCampaignType}
+                    onChange={e => setHunterCampaignType(e.target.value)}
+                    placeholder="e.g. LinkedIn thought leadership"
+                    style={{ width: "100%", padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                  {[
+                    { label: "Generate Growth Strategy", action: "strategy", desc: "Personalized channels, segments & narrative" },
+                    { label: "Create Campaign Plan", action: "campaign", desc: "4-week playbook + sample content" },
+                    { label: "Draft Outreach (Top Prospect)", action: "outreach", desc: "Email, LinkedIn & voicemail scripts" },
+                    { label: "Weekly Intelligence Briefing", action: "analyze", desc: "CMO-style briefing from your pipeline" },
+                  ].map(({ label, action, desc }) => (
+                    <button key={action} onClick={() => callHunter(action)} disabled={hunterLoading} style={{
+                      padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.2)",
+                      background: "rgba(139,92,246,0.06)", color: "#c4b5fd", cursor: hunterLoading ? "wait" : "pointer",
+                      textAlign: "left", opacity: hunterLoading ? 0.5 : 1, transition: "all 0.15s",
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{desc}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {hunterLoading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0" }}>
+                    <div style={{ width: 16, height: 16, border: "2px solid rgba(139,92,246,0.2)", borderTopColor: "#8b5cf6", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontStyle: "italic" }}>{hunterMsg}</span>
+                  </div>
+                )}
+
+                {!hunterLoading && hunterMsg && (
+                  <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", fontSize: 12, color: "#f87171", marginBottom: 10 }}>
+                    {hunterMsg}
+                  </div>
+                )}
+
+                {hunterResult && !hunterLoading && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(139,92,246,0.1)" }}>
+                    <HunterResult result={hunterResult} />
                   </div>
                 )}
               </div>

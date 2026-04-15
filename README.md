@@ -50,12 +50,28 @@ Then open `http://localhost:3000` (or just the HTML file) in your browser.
 
 ---
 
+## Hunter — Autonomous AI Growth Agent
+
+Hunter is the autonomous AI layer on top of the F-Score engine, powered by Claude. It transforms raw prospect scores into actionable growth intelligence.
+
+| Endpoint | What it does |
+|----------|-------------|
+| `POST /api/hunter/strategy` | Personalized growth strategy — campaign types, target segments, channel mix |
+| `POST /api/hunter/campaign` | 4-week campaign plan with sample content and KPI targets |
+| `POST /api/hunter/outreach/{id}` | Email, LinkedIn, and voicemail scripts for a specific prospect |
+| `POST /api/hunter/analyze` | Weekly intelligence briefing synthesizing the full scored pipeline |
+
+Hunter is accessible via the **Hunter AI ✦** tab in the frontend, or directly via the API. Requires `ANTHROPIC_API_KEY` in your `.env` (see `.env.example`).
+
+---
+
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
 │              React Frontend (SPA)                │
 │  Advisor Profile → Score Results → ML Explain    │
+│  Hunter AI tab → Strategy/Campaign/Outreach      │
 │  index.html — zero build step                    │
 └──────────────────┬──────────────────────────────┘
                    │ fetch() → JSON
@@ -70,11 +86,19 @@ Then open `http://localhost:3000` (or just the HTML file) in your browser.
 │  GET  /api/methodology → scoring.py              │
 │  GET  /api/health                                │
 │                                                  │
+│  POST /api/hunter/strategy  ──→ hunter.py        │
+│  POST /api/hunter/campaign  ──→ hunter.py        │
+│  POST /api/hunter/outreach/{id} → hunter.py      │
+│  POST /api/hunter/analyze   ──→ hunter.py        │
+│                                                  │
 │  ┌────────────┐  ┌─────────────┐  ┌───────────┐ │
 │  │ models.py  │  │  data.py    │  │scoring.py │ │
 │  │ Pydantic   │  │  Synthetic  │  │ ML core   │ │
 │  │ schemas    │  │  200 prosps │  │ 6 features│ │
 │  └────────────┘  └─────────────┘  └───────────┘ │
+│  ┌────────────────────────────────────────────┐  │
+│  │ hunter.py — Claude-powered growth agent    │  │
+│  └────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -122,6 +146,10 @@ Full methodology is available at `GET /api/methodology`.
 | `GET` | `/api/prospects` | — | List prospects (filterable) |
 | `GET` | `/api/methodology` | — | Full ML methodology as JSON |
 | `GET` | `/api/health` | — | Health check |
+| `POST` | `/api/hunter/strategy` | `{profile, advisor_description}` | AI growth strategy |
+| `POST` | `/api/hunter/campaign` | `{profile, campaign_type}` | 4-week campaign plan |
+| `POST` | `/api/hunter/outreach/{id}` | `AdvisorProfile` | Personalized outreach scripts |
+| `POST` | `/api/hunter/analyze` | `AdvisorProfile` | Weekly intelligence briefing |
 
 **AdvisorProfile schema:**
 ```json
@@ -142,12 +170,14 @@ Interactive API docs: `http://localhost:8000/docs`
 fscore-engine/
 ├── README.md
 ├── render.yaml              # Render deploy config
+├── .env.example             # API key template
 ├── backend/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app, routes, CORS
 │   ├── models.py            # Pydantic schemas
 │   ├── data.py              # Synthetic prospect generator
 │   ├── scoring.py           # ML pipeline (features, scoring, explain)
+│   ├── hunter.py            # Hunter AI growth agent (Claude)
 │   └── requirements.txt
 └── frontend/
     └── index.html           # React SPA (zero build step)
@@ -158,6 +188,7 @@ fscore-engine/
 - **Backend:** Python 3.11+, FastAPI, Pydantic v2
 - **Frontend:** React 18 (CDN, no build step), vanilla CSS
 - **ML:** Custom feature engineering, weighted ensemble, sigmoid calibration
+- **AI Agent:** Anthropic Claude (via `anthropic` Python SDK) — Hunter growth agent
 - **Data:** Seeded synthetic generation (reproducible via LCG PRNG)
 
 ## License
