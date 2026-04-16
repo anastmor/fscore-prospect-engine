@@ -87,6 +87,17 @@ def _profile_summary(profile: AdvisorProfile) -> str:
     )
 
 
+def _coerce_str(val) -> str:
+    """Convert a value to string — handles cases where Claude returns a dict instead of plain text."""
+    if isinstance(val, str):
+        return val
+    if isinstance(val, dict):
+        return "\n\n".join(
+            f"{k.replace('_', ' ').title()}: {v}" for k, v in val.items()
+        )
+    return str(val)
+
+
 def _parse_json(text: str, endpoint: str) -> dict:
     """Parse JSON from a Claude response, with fallback regex extraction."""
     text = text.strip()
@@ -270,9 +281,9 @@ def generate_outreach(prospect_id: int, profile: AdvisorProfile):
     return OutreachResponse(
         prospect_name=prospect.name,
         f_score=result.f_score,
-        email_variant=data["email_variant"],
-        linkedin_variant=data["linkedin_variant"],
-        voicemail_script=data["voicemail_script"],
+        email_variant=_coerce_str(data["email_variant"]),
+        linkedin_variant=_coerce_str(data["linkedin_variant"]),
+        voicemail_script=_coerce_str(data["voicemail_script"]),
     )
 
 

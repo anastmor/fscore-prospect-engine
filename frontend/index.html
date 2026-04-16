@@ -10,12 +10,82 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #08080d; color: #fff; font-family: 'DM Sans', sans-serif; }
+    body { background: #07070c; color: #fff; font-family: 'DM Sans', sans-serif; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
-    @keyframes spin { to { transform: rotate(360deg) } }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(6px)  } to { opacity:1; transform:translateY(0) } }
+    @keyframes fadeInUp{ from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes spin    { to   { transform: rotate(360deg) } }
+    @keyframes dotBounce {
+      0%,80%,100% { transform:translateY(0);  opacity:0.3 }
+      40%         { transform:translateY(-6px); opacity:1   }
+    }
+    @keyframes iconPulse {
+      0%,100% { box-shadow: 0 0 0 0   rgba(139,92,246,0.55) }
+      60%     { box-shadow: 0 0 0 9px rgba(139,92,246,0)    }
+    }
+    @keyframes gradientShift {
+      0%,100% { background-position: 0% 50% }
+      50%     { background-position: 100% 50% }
+    }
+    @keyframes shimmer {
+      from { background-position: -200% center }
+      to   { background-position:  200% center }
+    }
+
+    /* Card hover — transform/shadow added via class; background stays inline */
+    .card {
+      transition: transform 0.2s cubic-bezier(0.4,0,0.2,1),
+                  box-shadow 0.2s cubic-bezier(0.4,0,0.2,1),
+                  border-color 0.2s !important;
+    }
+    .card:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.45) !important;
+    }
+    .card-hi:hover  { border-color: rgba(34,197,94,0.22)  !important; }
+    .card-warm:hover{ border-color: rgba(234,179,8,0.18)  !important; }
+    .card-def:hover { border-color: rgba(255,255,255,0.1) !important; }
+
+    /* Hunter action buttons */
+    .hunter-btn {
+      transition: transform 0.18s cubic-bezier(0.4,0,0.2,1),
+                  box-shadow 0.18s,
+                  border-color 0.18s,
+                  background 0.18s !important;
+    }
+    .hunter-btn:hover:not([disabled]) {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 22px rgba(139,92,246,0.28) !important;
+      border-color: rgba(139,92,246,0.5) !important;
+      background: rgba(139,92,246,0.12) !important;
+    }
+    .hunter-btn:active:not([disabled]) { transform: translateY(0) !important; }
+
+    /* Hunter avatar pulse */
+    .hunter-icon { animation: iconPulse 3s ease-in-out infinite; }
+
+    /* Tab nav buttons */
+    .tab-btn { transition: all 0.18s !important; }
+    .tab-btn:hover { background: rgba(99,102,241,0.1) !important; color: rgba(255,255,255,0.65) !important; }
+    .tab-btn-hunter:hover { background: rgba(139,92,246,0.18) !important; color: #d4bbff !important; }
+
+    /* Run button shimmer effect */
+    .run-btn {
+      background-size: 200% auto !important;
+      transition: background-position 0.4s, transform 0.15s, box-shadow 0.15s !important;
+    }
+    .run-btn:hover:not([disabled]) {
+      background-position: right center !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 6px 24px rgba(99,102,241,0.4) !important;
+    }
+
+    /* Pill hover */
+    .pill { transition: all 0.15s !important; }
+    .pill:hover { border-color: rgba(99,102,241,0.5) !important; color: rgba(255,255,255,0.7) !important; }
   </style>
 </head>
 <body>
@@ -30,29 +100,41 @@
     // ─── Components ───
 
     const Pill = ({ children, active, onClick }) => (
-      <button onClick={onClick} style={{
+      <button className="pill" onClick={onClick} style={{
         padding: "6px 13px", borderRadius: 100, border: "1px solid",
         borderColor: active ? "#6366f1" : "rgba(255,255,255,0.07)",
         background: active ? "rgba(99,102,241,0.14)" : "rgba(255,255,255,0.02)",
         color: active ? "#a5b4fc" : "rgba(255,255,255,0.4)",
         fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
-        transition: "all 0.15s", fontWeight: active ? 600 : 400,
+        fontWeight: active ? 600 : 400,
       }}>{children}</button>
     );
 
     const FeatureBar = ({ label, value, color }) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", minWidth: 95, fontFamily: "'DM Sans'" }}>{label}</span>
-        <div style={{ flex: 1, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-          <div style={{ width: `${value * 100}%`, height: "100%", borderRadius: 3, background: color, transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", minWidth: 95, fontFamily: "'DM Sans'" }}>{label}</span>
+        <div style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+          <div style={{ width: `${value * 100}%`, height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${color}99, ${color})`, transition: "width 0.7s cubic-bezier(0.4,0,0.2,1)" }} />
         </div>
         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono'", minWidth: 28, textAlign: "right" }}>{(value * 100).toFixed(0)}%</span>
       </div>
     );
 
     const Spinner = () => (
-      <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-        <div style={{ width: 24, height: 24, border: "2px solid rgba(99,102,241,0.2)", borderTopColor: "#6366f1", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: 12 }}>
+        <div style={{ width: 28, height: 28, border: "2px solid rgba(99,102,241,0.15)", borderTopColor: "#6366f1", borderRadius: "50%", animation: "spin 0.75s linear infinite" }} />
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: 0.5 }}>Scoring pipeline running…</span>
+      </div>
+    );
+
+    const TypingDots = ({ msg }) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 0" }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {[0, 0.2, 0.4].map((d, i) => (
+            <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", animation: `dotBounce 1.3s ease-in-out ${d}s infinite` }} />
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic", letterSpacing: 0.2 }}>{msg}</span>
       </div>
     );
 
@@ -264,25 +346,53 @@
       };
 
       return (
-        <div style={{ minHeight: "100vh", backgroundImage: "radial-gradient(ellipse at 10% 0%, rgba(99,102,241,0.05) 0%, transparent 50%)", padding: "28px 16px" }}>
+        <div style={{
+          minHeight: "100vh",
+          background: "#07070c",
+          backgroundImage: [
+            "radial-gradient(ellipse 70% 50% at 8% 0%,  rgba(99,102,241,0.09) 0%, transparent 60%)",
+            "radial-gradient(ellipse 60% 40% at 92% 100%, rgba(139,92,246,0.07) 0%, transparent 55%)",
+            "radial-gradient(ellipse 40% 30% at 50% 45%,  rgba(99,102,241,0.03) 0%, transparent 60%)",
+          ].join(","),
+          padding: "32px 16px",
+        }}>
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
 
             {/* Header */}
-            <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 280 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800 }}>F</div>
-                  <h1 style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Playfair Display',serif" }}>F-Score Prospect Engine</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 7 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, fontWeight: 800, letterSpacing: -0.5,
+                    boxShadow: "0 0 0 1px rgba(99,102,241,0.3), 0 4px 16px rgba(99,102,241,0.25)",
+                  }}>F</div>
+                  <div>
+                    <h1 style={{ fontSize: 19, fontWeight: 800, fontFamily: "'Playfair Display',serif", letterSpacing: -0.3, lineHeight: 1.1 }}>
+                      F-Score Prospect Engine
+                    </h1>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.4, marginTop: 2 }}>
+                      FastAPI · React · ML scoring pipeline · {health
+                        ? <span style={{ color: "rgba(99,102,241,0.8)" }}>{health.prospects_loaded} prospects</span>
+                        : <span style={{ color: "rgba(255,255,255,0.18)" }}>connecting…</span>
+                      }
+                    </p>
+                  </div>
                 </div>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
-                  Full-stack ML scoring pipeline. Backend: FastAPI · Frontend: React · {health ? `${health.prospects_loaded} prospects loaded` : "Connecting..."}
-                </p>
               </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button onClick={() => { setShowPipeline(!showPipeline); setShowML(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showPipeline ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Pipeline</button>
-                <button onClick={() => { loadMethodology(); setShowPipeline(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showML ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>ML Deep Dive</button>
-                {stats && <button onClick={() => { setShowStats(!showStats); setShowPipeline(false); setShowML(false); setShowHunter(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: showStats ? "rgba(99,102,241,0.1)" : "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Stats</button>}
-                <button onClick={() => { setShowHunter(!showHunter); setShowPipeline(false); setShowML(false); setShowStats(false); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${showHunter ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.08)"}`, background: showHunter ? "rgba(139,92,246,0.15)" : "transparent", color: showHunter ? "#c4b5fd" : "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", fontWeight: 700 }}>Hunter AI ✦</button>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                <button className="tab-btn" onClick={() => { setShowPipeline(!showPipeline); setShowML(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 11px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: showPipeline ? "rgba(99,102,241,0.12)" : "transparent", color: showPipeline ? "#a5b4fc" : "rgba(255,255,255,0.38)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Pipeline</button>
+                <button className="tab-btn" onClick={() => { loadMethodology(); setShowPipeline(false); setShowStats(false); setShowHunter(false); }} style={{ padding: "5px 11px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: showML ? "rgba(99,102,241,0.12)" : "transparent", color: showML ? "#a5b4fc" : "rgba(255,255,255,0.38)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>ML Deep Dive</button>
+                {stats && <button className="tab-btn" onClick={() => { setShowStats(!showStats); setShowPipeline(false); setShowML(false); setShowHunter(false); }} style={{ padding: "5px 11px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: showStats ? "rgba(99,102,241,0.12)" : "transparent", color: showStats ? "#a5b4fc" : "rgba(255,255,255,0.38)", fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Stats</button>}
+                <button className="tab-btn tab-btn-hunter" onClick={() => { setShowHunter(!showHunter); setShowPipeline(false); setShowML(false); setShowStats(false); }} style={{
+                  padding: "5px 12px", borderRadius: 7,
+                  border: `1px solid ${showHunter ? "rgba(139,92,246,0.5)" : "rgba(139,92,246,0.18)"}`,
+                  background: showHunter ? "rgba(139,92,246,0.18)" : "rgba(139,92,246,0.04)",
+                  color: showHunter ? "#d4bbff" : "rgba(199,160,255,0.55)",
+                  fontSize: 10, cursor: "pointer", fontWeight: 700, letterSpacing: 0.2,
+                }}>Hunter AI ✦</button>
               </div>
             </div>
 
@@ -388,68 +498,97 @@
 
             {/* Hunter AI */}
             {showHunter && (
-              <div style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg,#8b5cf6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>H</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#c4b5fd" }}>Hunter — AI Growth Agent</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Powered by Claude · Strategy, campaigns & personalized outreach</div>
+              <div style={{
+                background: "linear-gradient(135deg, rgba(139,92,246,0.05) 0%, rgba(99,102,241,0.03) 100%)",
+                border: "1px solid rgba(139,92,246,0.18)",
+                borderRadius: 14, padding: 22, marginBottom: 16,
+                animation: "fadeInUp 0.35s cubic-bezier(0.4,0,0.2,1) both",
+                boxShadow: "0 0 40px rgba(139,92,246,0.06), inset 0 1px 0 rgba(255,255,255,0.04)",
+              }}>
+                {/* Hunter Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, paddingBottom: 16, borderBottom: "1px solid rgba(139,92,246,0.1)" }}>
+                  <div className="hunter-icon" style={{
+                    width: 38, height: 38, borderRadius: 10,
+                    background: "linear-gradient(135deg,#7c3aed,#6366f1)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, fontWeight: 800, flexShrink: 0,
+                    boxShadow: "0 0 0 1px rgba(139,92,246,0.4)",
+                  }}>H</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#d4bbff", letterSpacing: -0.2, fontFamily: "'Playfair Display',serif" }}>Hunter</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>AI Chief Growth Officer · Powered by Claude</div>
                   </div>
+                  <div style={{ fontSize: 9, padding: "3px 8px", borderRadius: 100, background: "rgba(139,92,246,0.12)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.2)", fontWeight: 600, letterSpacing: 0.5 }}>LIVE</div>
                 </div>
 
-                <div style={{ marginTop: 14, marginBottom: 14 }}>
-                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Describe your practice</label>
+                {/* Inputs */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.25)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1.2 }}>Your practice</label>
                   <textarea
                     value={hunterDesc}
                     onChange={e => setHunterDesc(e.target.value)}
                     rows={2}
-                    style={{ width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12, fontFamily: "'DM Sans',sans-serif", resize: "vertical", lineHeight: 1.5 }}
+                    style={{
+                      width: "100%", padding: "10px 12px", borderRadius: 9,
+                      border: "1px solid rgba(139,92,246,0.15)",
+                      background: "rgba(139,92,246,0.04)",
+                      color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: "'DM Sans',sans-serif",
+                      resize: "vertical", lineHeight: 1.6, outline: "none",
+                      transition: "border-color 0.2s",
+                    }}
                   />
                 </div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Campaign type</label>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: "block", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.25)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1.2 }}>Campaign focus</label>
                   <input
                     value={hunterCampaignType}
                     onChange={e => setHunterCampaignType(e.target.value)}
                     placeholder="e.g. LinkedIn thought leadership"
-                    style={{ width: "100%", padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#fff", fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}
+                    style={{
+                      width: "100%", padding: "9px 12px", borderRadius: 9,
+                      border: "1px solid rgba(139,92,246,0.15)",
+                      background: "rgba(139,92,246,0.04)",
+                      color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: "'DM Sans',sans-serif",
+                      outline: "none",
+                    }}
                   />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                {/* Action Buttons */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
                   {[
-                    { label: "Generate Growth Strategy", action: "strategy", desc: "Personalized channels, segments & narrative" },
-                    { label: "Create Campaign Plan", action: "campaign", desc: "4-week playbook + sample content" },
-                    { label: "Draft Outreach (Top Prospect)", action: "outreach", desc: "Email, LinkedIn & voicemail scripts" },
-                    { label: "Weekly Intelligence Briefing", action: "analyze", desc: "CMO-style briefing from your pipeline" },
-                  ].map(({ label, action, desc }) => (
-                    <button key={action} onClick={() => callHunter(action)} disabled={hunterLoading} style={{
-                      padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.2)",
-                      background: "rgba(139,92,246,0.06)", color: "#c4b5fd", cursor: hunterLoading ? "wait" : "pointer",
-                      textAlign: "left", opacity: hunterLoading ? 0.5 : 1, transition: "all 0.15s",
+                    { label: "Growth Strategy", action: "strategy", desc: "Channels, segments & narrative", icon: "◈" },
+                    { label: "Campaign Plan", action: "campaign", desc: "4-week playbook + sample content", icon: "◉" },
+                    { label: "Draft Outreach", action: "outreach", desc: "Email, LinkedIn & voicemail", icon: "◎" },
+                    { label: "Weekly Briefing", action: "analyze", desc: "CMO-style pipeline intelligence", icon: "◇" },
+                  ].map(({ label, action, desc, icon }) => (
+                    <button key={action} className="hunter-btn" onClick={() => callHunter(action)} disabled={hunterLoading} style={{
+                      padding: "12px 14px", borderRadius: 10,
+                      border: "1px solid rgba(139,92,246,0.2)",
+                      background: "rgba(139,92,246,0.06)",
+                      color: "#c4b5fd", cursor: hunterLoading ? "wait" : "pointer",
+                      textAlign: "left", opacity: hunterLoading ? 0.45 : 1,
                     }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{desc}</div>
+                      <div style={{ fontSize: 14, marginBottom: 3, opacity: 0.7 }}>{icon}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 2, letterSpacing: -0.1 }}>{label}</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", lineHeight: 1.4 }}>{desc}</div>
                     </button>
                   ))}
                 </div>
 
-                {hunterLoading && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0" }}>
-                    <div style={{ width: 16, height: 16, border: "2px solid rgba(139,92,246,0.2)", borderTopColor: "#8b5cf6", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontStyle: "italic" }}>{hunterMsg}</span>
-                  </div>
-                )}
+                {/* Typing Indicator */}
+                {hunterLoading && <TypingDots msg={hunterMsg} />}
 
+                {/* Error */}
                 {!hunterLoading && hunterMsg && (
-                  <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", fontSize: 12, color: "#f87171", marginBottom: 10 }}>
+                  <div style={{ padding: "10px 12px", borderRadius: 9, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.14)", fontSize: 12, color: "#fca5a5", marginBottom: 10 }}>
                     {hunterMsg}
                   </div>
                 )}
 
+                {/* Result */}
                 {hunterResult && !hunterLoading && (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(139,92,246,0.1)" }}>
+                  <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid rgba(139,92,246,0.1)", animation: "fadeInUp 0.35s ease both" }}>
                     <HunterResult result={hunterResult} />
                   </div>
                 )}
@@ -457,8 +596,8 @@
             )}
 
             {/* Advisor Profile */}
-            <div style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: 14, textTransform: "uppercase", letterSpacing: 1.2 }}>Define Your Ideal Client Profile</h3>
+            <div style={{ background: "rgba(255,255,255,0.013)", border: "1px solid rgba(255,255,255,0.055)", borderRadius: 14, padding: 22, marginBottom: 16, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
+              <h3 style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", marginBottom: 16, textTransform: "uppercase", letterSpacing: 1.4 }}>Define Your Ideal Client Profile</h3>
 
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Target Sectors</label>
@@ -496,13 +635,15 @@
                 </div>
               </div>
 
-              <button onClick={runScore} disabled={loading || !health} style={{
-                width: "100%", padding: "11px", borderRadius: 8, border: "none",
-                background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+              <button className="run-btn" onClick={runScore} disabled={loading || !health} style={{
+                width: "100%", padding: "12px", borderRadius: 10, border: "none",
+                background: loading
+                  ? "rgba(99,102,241,0.25)"
+                  : "linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #8b5cf6 100%)",
                 color: "#fff", fontSize: 13, fontWeight: 700, cursor: loading ? "wait" : "pointer",
-                letterSpacing: 0.3, opacity: health ? 1 : 0.4,
+                letterSpacing: 0.4, opacity: health ? 1 : 0.35,
               }}>
-                {loading ? "Scoring..." : results ? "Re-Score All Prospects" : "Run F-Score Pipeline →"}
+                {loading ? "Running pipeline…" : results ? "Re-Score All Prospects" : "Run F-Score Pipeline →"}
               </button>
             </div>
 
@@ -511,32 +652,38 @@
 
             {/* Results */}
             {results && !loading && (
-              <div style={{ animation: "fadeIn 0.3s" }}>
+              <div style={{ animation: "fadeInUp 0.4s ease both" }}>
                 {/* Summary */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   {[
-                    { label: "High Intent (80+)", count: results.high_intent_count, color: "#22c55e", bg: "rgba(34,197,94,0.06)", bd: "rgba(34,197,94,0.12)" },
-                    { label: "Warm (60-79)", count: results.warm_count, color: "#eab308", bg: "rgba(234,179,8,0.06)", bd: "rgba(234,179,8,0.1)" },
-                    { label: "Total Scored", count: results.total_prospects, color: "rgba(255,255,255,0.5)", bg: "rgba(255,255,255,0.02)", bd: "rgba(255,255,255,0.06)" },
+                    { label: "High Intent", sub: "80+", count: results.high_intent_count, color: "#22c55e", bg: "rgba(34,197,94,0.05)", bd: "rgba(34,197,94,0.14)" },
+                    { label: "Warm", sub: "60–79", count: results.warm_count, color: "#eab308", bg: "rgba(234,179,8,0.05)", bd: "rgba(234,179,8,0.12)" },
+                    { label: "Total Scored", sub: "all", count: results.total_prospects, color: "rgba(255,255,255,0.45)", bg: "rgba(255,255,255,0.018)", bd: "rgba(255,255,255,0.07)" },
                   ].map((m, i) => (
-                    <div key={i} style={{ flex: 1, background: m.bg, border: `1px solid ${m.bd}`, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: m.color, fontFamily: "'DM Mono'" }}>{m.count}</div>
-                      <div style={{ fontSize: 9, color: m.color, opacity: 0.6, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 600 }}>{m.label}</div>
+                    <div key={i} style={{
+                      flex: 1, background: m.bg, border: `1px solid ${m.bd}`,
+                      borderRadius: 10, padding: "12px 12px", textAlign: "center",
+                      animation: `fadeInUp 0.4s ease ${i * 0.08}s both`,
+                    }}>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: m.color, fontFamily: "'DM Mono'", lineHeight: 1 }}>{m.count}</div>
+                      <div style={{ fontSize: 9, color: m.color, opacity: 0.55, textTransform: "uppercase", letterSpacing: 0.9, fontWeight: 600, marginTop: 4 }}>{m.label} <span style={{ opacity: 0.5 }}>({m.sub})</span></div>
                     </div>
                   ))}
                 </div>
 
                 {/* Prospect Cards */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {results.results.slice(0, limit).map((r) => {
+                  {results.results.slice(0, limit).map((r, idx) => {
                     const p = r.prospect;
                     const sc = colorOf(r.f_score);
                     const expanded = expandedId === p.id;
+                    const cardClass = r.f_score >= 80 ? "card card-hi" : r.f_score >= 60 ? "card card-warm" : "card card-def";
                     return (
-                      <div key={p.id} onClick={() => handleExpand(p.id)} style={{
-                        background: expanded ? "rgba(99,102,241,0.05)" : "rgba(255,255,255,0.012)",
-                        border: `1px solid ${r.f_score >= 80 ? "rgba(34,197,94,0.1)" : r.f_score >= 60 ? "rgba(234,179,8,0.07)" : "rgba(255,255,255,0.04)"}`,
-                        borderRadius: 8, padding: "10px 14px", cursor: "pointer", transition: "all 0.15s",
+                      <div key={p.id} className={cardClass} onClick={() => handleExpand(p.id)} style={{
+                        background: expanded ? "rgba(99,102,241,0.06)" : "rgba(255,255,255,0.012)",
+                        border: `1px solid ${expanded ? "rgba(99,102,241,0.18)" : r.f_score >= 80 ? "rgba(34,197,94,0.1)" : r.f_score >= 60 ? "rgba(234,179,8,0.07)" : "rgba(255,255,255,0.05)"}`,
+                        borderRadius: 9, padding: "11px 14px", cursor: "pointer",
+                        animation: `fadeInUp 0.3s ease ${Math.min(idx, 20) * 0.03}s both`,
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono'", minWidth: 22 }}>#{r.rank}</span>
@@ -610,18 +757,18 @@
                 </div>
 
                 {limit < results.results.length && (
-                  <button onClick={() => setLimit(l => l + 30)} style={{
-                    width: "100%", marginTop: 10, padding: "10px", borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.06)", background: "transparent",
-                    color: "rgba(255,255,255,0.3)", fontSize: 12, cursor: "pointer",
+                  <button className="tab-btn" onClick={() => setLimit(l => l + 30)} style={{
+                    width: "100%", marginTop: 10, padding: "11px", borderRadius: 9,
+                    border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)",
+                    color: "rgba(255,255,255,0.28)", fontSize: 11, cursor: "pointer", fontWeight: 500,
                   }}>
-                    Show more ({results.results.length - limit} remaining)
+                    Load {Math.min(30, results.results.length - limit)} more · {results.results.length - limit} remaining
                   </button>
                 )}
 
-                <div style={{ marginTop: 20, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.1)", borderRadius: 8, padding: 14, textAlign: "center" }}>
-                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 2 }}>Full-stack ML prospect matching prototype</p>
-                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)" }}>Built by Anastasis Moraitis · Georgia Tech '27 · FastAPI + React</p>
+                <div style={{ marginTop: 22, background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.08)", borderRadius: 10, padding: 16, textAlign: "center" }}>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginBottom: 3 }}>Full-stack ML prospect matching prototype</p>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.15)" }}>Built by Anastasis Moraitis · Georgia Tech '27 · FastAPI + React</p>
                 </div>
               </div>
             )}
