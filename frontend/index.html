@@ -429,31 +429,178 @@
             )}
 
             {/* ML Deep Dive */}
-            {showML && methodology && (
-              <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: 20, marginBottom: 16, animation: "fadeIn 0.3s" }}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginBottom: 12 }}>ML Methodology (from /api/methodology)</h3>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
-                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Scoring Function</strong><br/>
-                  <code style={{ fontSize: 11, color: "#a5b4fc", fontFamily: "'DM Mono'" }}>{methodology.scoring_function}</code>
-                  <br/><br/>
-                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Features ({methodology.feature_descriptions.length})</strong>
-                  {methodology.feature_descriptions.map((f, i) => (
-                    <div key={i} style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(99,102,241,0.2)" }}>
-                      <div style={{ color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>{f.name} <span style={{ color: "rgba(99,102,241,0.6)" }}>(w={f.weight})</span></div>
-                      <div style={{ fontSize: 10, marginTop: 2 }}>{f.detail}</div>
+            {showML && methodology && (() => {
+              const FEAT_COLORS = ["#6366f1","#8b5cf6","#a78bfa","#22c55e","#818cf8","#eab308"];
+              const ARCH_ICONS  = ["◈","◉","◎","⊛","◇"];
+              const archEntries = Object.entries(methodology.production_architecture);
+
+              // Sigmoid path: σ(8(x − 0.45)) × 100, mapped to SVG (x: 16–236, y: 0–70)
+              const sigPath = (() => {
+                const pts = [];
+                for (let i = 0; i <= 60; i++) {
+                  const x = i / 60;
+                  const y = 100 / (1 + Math.exp(-8 * (x - 0.45)));
+                  pts.push(`${i === 0 ? "M" : "L"} ${(16 + x * 220).toFixed(1)} ${(70 - y * 0.7).toFixed(1)}`);
+                }
+                return pts.join(" ");
+              })();
+
+              const sec  = { marginBottom: 24 };
+              const head = { fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 12 };
+
+              return (
+                <div style={{ background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 14, padding: 22, marginBottom: 16, animation: "fadeInUp 0.35s ease both" }}>
+
+                  {/* Title */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid rgba(99,102,241,0.1)" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>𝑓</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", letterSpacing: -0.2 }}>ML Methodology</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 1 }}>Sourced from <code style={{ fontFamily: "'DM Mono'", color: "rgba(99,102,241,0.7)" }}>GET /api/methodology</code></div>
                     </div>
-                  ))}
-                  <br/>
-                  <strong style={{ color: "rgba(255,255,255,0.6)" }}>Production Architecture</strong>
-                  {Object.entries(methodology.production_architecture).map(([key, val]) => (
-                    <div key={key} style={{ marginTop: 8, paddingLeft: 12, borderLeft: "2px solid rgba(99,102,241,0.15)" }}>
-                      <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{val.method || key}</div>
-                      <div style={{ fontSize: 10, marginTop: 2 }}>{val.description || JSON.stringify(val)}</div>
+                  </div>
+
+                  {/* ── Scoring Function ── */}
+                  <div style={sec}>
+                    <div style={head}>Scoring Function</div>
+
+                    {/* Main equation box */}
+                    <div style={{
+                      background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)",
+                      borderRadius: 12, padding: "18px 20px", marginBottom: 14,
+                      boxShadow: "inset 0 1px 0 rgba(99,102,241,0.1)",
+                    }}>
+                      <div style={{ textAlign: "center", marginBottom: 14 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'DM Mono'", color: "#c7d2fe", letterSpacing: 0.5, lineHeight: 1.5 }}>
+                          F-Score = σ(k · (x − c)) × 100
+                        </div>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", marginTop: 6, fontFamily: "'DM Mono'" }}>
+                          where σ(z) = 1 / (1 + e<sup style={{ fontSize: 8 }}>−z</sup>)
+                        </div>
+                      </div>
+
+                      {/* Parameter grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+                        {[
+                          { sym: "k", val: "8.0", lbl: "Steepness", note: "controls how sharply scores polarize" },
+                          { sym: "c", val: "0.45", lbl: "Inflection", note: "raw score threshold for score = 50" },
+                          { sym: "x", val: "Σ fᵢwᵢ/Σw", lbl: "Weighted mean", note: "normalized across all 6 features" },
+                        ].map(({ sym, val, lbl, note }) => (
+                          <div key={sym} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 10px", textAlign: "center" }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: "#a5b4fc", fontFamily: "'DM Mono'", lineHeight: 1 }}>{sym}</div>
+                            <div style={{ fontSize: 11, color: "#e0e7ff", fontWeight: 600, fontFamily: "'DM Mono'", marginTop: 4 }}>{val}</div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{lbl}</div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", marginTop: 3, lineHeight: 1.4 }}>{note}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Sigmoid curve SVG */}
+                      <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "12px 14px 8px" }}>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Sigmoid calibration curve — raw score → F-Score</div>
+                        <svg viewBox="0 0 240 86" style={{ width: "100%", height: "auto", overflow: "visible" }}>
+                          {/* Grid lines */}
+                          {[0, 25, 50, 75, 100].map(v => (
+                            <g key={v}>
+                              <line x1="16" y1={70 - v * 0.7} x2="236" y2={70 - v * 0.7} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                              <text x="12" y={70 - v * 0.7 + 3} fontSize="6" fill="rgba(255,255,255,0.2)" textAnchor="end">{v}</text>
+                            </g>
+                          ))}
+                          {[0, 0.25, 0.5, 0.75, 1].map(v => (
+                            <g key={v}>
+                              <line x1={16 + v * 220} y1="0" x2={16 + v * 220} y2="70" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                              <text x={16 + v * 220} y="80" fontSize="6" fill="rgba(255,255,255,0.2)" textAnchor="middle">{v}</text>
+                            </g>
+                          ))}
+                          {/* Axes labels */}
+                          <text x="124" y="86" fontSize="7" fill="rgba(255,255,255,0.2)" textAnchor="middle">raw score x</text>
+                          {/* Threshold at c=0.45 → svgX = 16 + 0.45×220 = 115 */}
+                          <line x1="115" y1="0" x2="115" y2="70" stroke="rgba(99,102,241,0.35)" strokeWidth="1" strokeDasharray="3,3" />
+                          <text x="118" y="9" fontSize="6" fill="rgba(99,102,241,0.6)">c=0.45</text>
+                          {/* Glow path */}
+                          <path d={sigPath} fill="none" stroke="rgba(99,102,241,0.18)" strokeWidth="7" strokeLinecap="round" />
+                          {/* Sigmoid curve */}
+                          <path d={sigPath} fill="none" stroke="url(#sigGrad)" strokeWidth="2.5" strokeLinecap="round" />
+                          {/* Midpoint dot at (c=0.45, F=50) → (115, 35) */}
+                          <circle cx="115" cy="35" r="3.5" fill="#6366f1" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                          <defs>
+                            <linearGradient id="sigGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%"   stopColor="#818cf8" />
+                              <stop offset="100%" stopColor="#22c55e" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* ── Feature Engineering ── */}
+                  <div style={sec}>
+                    <div style={head}>Feature Engineering — 6 features per advisor–prospect pair</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {methodology.feature_descriptions.map((f, i) => {
+                        const col = FEAT_COLORS[i];
+                        const pct = Math.round(f.weight * 100);
+                        return (
+                          <div key={i} style={{
+                            background: "rgba(255,255,255,0.018)", border: `1px solid ${col}22`,
+                            borderRadius: 10, padding: "12px 14px",
+                            animation: `fadeInUp 0.3s ease ${i * 0.05}s both`,
+                          }}>
+                            {/* Header row */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                              <div style={{ width: 6, height: 6, borderRadius: "50%", background: col, flexShrink: 0, boxShadow: `0 0 6px ${col}80` }} />
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)", fontFamily: "'DM Mono'", flex: 1 }}>
+                                {f.name}
+                              </div>
+                              <div style={{ fontSize: 9, padding: "2px 7px", borderRadius: 100, background: `${col}18`, color: col, border: `1px solid ${col}30`, fontWeight: 700 }}>
+                                w = {f.weight}
+                              </div>
+                            </div>
+                            {/* Weight bar */}
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: 0.8 }}>Model weight</span>
+                                <span style={{ fontSize: 9, fontFamily: "'DM Mono'", color: col }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                                <div style={{ width: `${pct / 28 * 100}%`, height: "100%", background: `linear-gradient(90deg, ${col}60, ${col})`, borderRadius: 2, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+                              </div>
+                            </div>
+                            {/* Method tag */}
+                            <div style={{ fontSize: 9, color: col, marginBottom: 5, opacity: 0.7, fontStyle: "italic" }}>{f.method}</div>
+                            {/* Detail */}
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.65 }}>{f.detail}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── Production Architecture ── */}
+                  <div style={{ marginBottom: 0 }}>
+                    <div style={head}>Production Architecture (Theoretical)</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {archEntries.map(([key, val], i) => (
+                        <div key={key} style={{ display: "flex", gap: 12, background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 9, padding: "11px 14px" }}>
+                          <div style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#818cf8", flexShrink: 0, marginTop: 1 }}>{ARCH_ICONS[i] || "◈"}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 3 }}>
+                              {val.method || Object.keys(val).join(", ")}
+                            </div>
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 1.6 }}>
+                              {val.description || Object.entries(val).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 9, color: "rgba(99,102,241,0.5)", fontWeight: 700, flexShrink: 0, paddingTop: 3 }}>Stage {i + 1}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Stats */}
             {showStats && stats && (
